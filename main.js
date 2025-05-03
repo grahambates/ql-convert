@@ -279,31 +279,70 @@ function applyThreshold(srcPixels, destPixels, threshold) {
 
 // 2-bit threshold algorithm
 function apply2BitThreshold(srcPixels, destPixels, threshold) {
+  // Calculate level boundaries based on threshold
+  // Threshold controls the midpoint between darker and lighter colors
+  const darkCutoff = Math.max(0, Math.min(127, threshold / 2));  // Boundary between level 0 and 1
+  const midCutoff = threshold;                                  // Boundary between level 1 and 2
+  const brightCutoff = Math.min(255, threshold + (255 - threshold) / 2); // Boundary between level 2 and 3
+
   for (let i = 0; i < srcPixels.length; i += 4) {
     // Get RGB values
     const r = srcPixels[i];
     const g = srcPixels[i + 1];
     const b = srcPixels[i + 2];
 
-    // Convert to 2-bit per channel (4 possible values: 0, 85, 170, 255)
-    destPixels[i] = convert2Bit(r, threshold);     // Red
-    destPixels[i + 1] = convert2Bit(g, threshold); // Green
-    destPixels[i + 2] = convert2Bit(b, threshold); // Blue
-    destPixels[i + 3] = 255;                       // Alpha is always 255
+    // Convert to 2-bit per channel with dynamic boundaries based on threshold
+    // Red channel
+    if (r < darkCutoff) {
+      destPixels[i] = 0;
+    } else if (r < midCutoff) {
+      destPixels[i] = 85;
+    } else if (r < brightCutoff) {
+      destPixels[i] = 170;
+    } else {
+      destPixels[i] = 255;
+    }
+
+    // Green channel
+    if (g < darkCutoff) {
+      destPixels[i + 1] = 0;
+    } else if (g < midCutoff) {
+      destPixels[i + 1] = 85;
+    } else if (g < brightCutoff) {
+      destPixels[i + 1] = 170;
+    } else {
+      destPixels[i + 1] = 255;
+    }
+
+    // Blue channel
+    if (b < darkCutoff) {
+      destPixels[i + 2] = 0;
+    } else if (b < midCutoff) {
+      destPixels[i + 2] = 85;
+    } else if (b < brightCutoff) {
+      destPixels[i + 2] = 170;
+    } else {
+      destPixels[i + 2] = 255;
+    }
+
+    // Alpha is always 255
+    destPixels[i + 3] = 255;
   }
 }
 
 // Helper function to convert a value to 2-bit (4 levels)
 function convert2Bit(value, threshold) {
-  // Map to 4 levels (0, 85, 170, 255)
-  if (value < threshold / 3) {
-    return 0;
-  } else if (value < threshold) {
-    return 85;
-  } else if (value < threshold + (255 - threshold) / 2) {
-    return 170;
+  // Adjust threshold to work better with 2-bit mode
+  // The threshold parameter now controls the overall brightness/contrast
+  const adjustedThreshold = threshold / 2;
+
+  // Map to 4 levels (0, 85, 170, 255) with the threshold affecting the distribution
+  if (value < adjustedThreshold) {
+    // For darker pixels, split based on if they're very dark or moderately dark
+    return value < adjustedThreshold / 2 ? 0 : 85;
   } else {
-    return 255;
+    // For brighter pixels, split based on if they're very bright or moderately bright
+    return value < 128 + (adjustedThreshold / 2) ? 170 : 255;
   }
 }
 
@@ -350,6 +389,14 @@ function apply2BitFloydSteinberg(srcPixels, destPixels, threshold, width, height
   // Create a copy of the source pixels to work with
   const tempPixels = new Uint8ClampedArray(srcPixels);
 
+  // Calculate level boundaries based on threshold
+  const darkCutoff = Math.max(0, Math.min(127, threshold / 2));
+  const midCutoff = threshold;
+  const brightCutoff = Math.min(255, threshold + (255 - threshold) / 2);
+
+  // Color values for 2-bit mode
+  const colorLevels = [0, 85, 170, 255];
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -360,14 +407,14 @@ function apply2BitFloydSteinberg(srcPixels, destPixels, threshold, width, height
 
         // Find the closest of the 4 possible 2-bit values
         let newPixel;
-        if (oldPixel < 43) {
-          newPixel = 0;
-        } else if (oldPixel < 128) {
-          newPixel = 85;
-        } else if (oldPixel < 213) {
-          newPixel = 170;
+        if (oldPixel < darkCutoff) {
+          newPixel = colorLevels[0]; // 0
+        } else if (oldPixel < midCutoff) {
+          newPixel = colorLevels[1]; // 85
+        } else if (oldPixel < brightCutoff) {
+          newPixel = colorLevels[2]; // 170
         } else {
-          newPixel = 255;
+          newPixel = colorLevels[3]; // 255
         }
 
         const error = (oldPixel - newPixel) * ditherAmount;
@@ -444,6 +491,14 @@ function apply2BitAtkinson(srcPixels, destPixels, threshold, width, height, dith
   // Create a copy of the source pixels to work with
   const tempPixels = new Uint8ClampedArray(srcPixels);
 
+  // Calculate level boundaries based on threshold
+  const darkCutoff = Math.max(0, Math.min(127, threshold / 2));
+  const midCutoff = threshold;
+  const brightCutoff = Math.min(255, threshold + (255 - threshold) / 2);
+
+  // Color values for 2-bit mode
+  const colorLevels = [0, 85, 170, 255];
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -452,16 +507,16 @@ function apply2BitAtkinson(srcPixels, destPixels, threshold, width, height, dith
       for (let c = 0; c < 3; c++) {
         const oldPixel = tempPixels[i + c];
 
-        // Find the closest of the 4 possible 2-bit values
+        // Find the closest of the 4 possible 2-bit values based on threshold
         let newPixel;
-        if (oldPixel < 43) {
-          newPixel = 0;
-        } else if (oldPixel < 128) {
-          newPixel = 85;
-        } else if (oldPixel < 213) {
-          newPixel = 170;
+        if (oldPixel < darkCutoff) {
+          newPixel = colorLevels[0]; // 0
+        } else if (oldPixel < midCutoff) {
+          newPixel = colorLevels[1]; // 85
+        } else if (oldPixel < brightCutoff) {
+          newPixel = colorLevels[2]; // 170
         } else {
-          newPixel = 255;
+          newPixel = colorLevels[3]; // 255
         }
 
         const error = Math.floor(((oldPixel - newPixel) * ditherAmount) / 8);
@@ -536,6 +591,11 @@ function apply2BitOrderedDithering(srcPixels, destPixels, threshold, width, heig
   const matrixWidth = matrix[0].length;
   const matrixHeight = matrix.length;
 
+  // Calculate level boundaries based on threshold
+  const darkCutoff = Math.max(0, Math.min(127, threshold / 2));
+  const midCutoff = threshold;
+  const brightCutoff = Math.min(255, threshold + (255 - threshold) / 2);
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -544,19 +604,25 @@ function apply2BitOrderedDithering(srcPixels, destPixels, threshold, width, heig
       const matrixX = x % matrixWidth;
       const matrixY = y % matrixHeight;
 
-      // Get threshold adjustment from Bayer matrix (scaled down for 2-bit)
+      // Get threshold adjustment from Bayer matrix
+      // Scale it to create a noticeable effect in 2-bit mode
       const thresholdModifier = Math.floor(matrix[matrixY][matrixX] * 85 * ditherAmount);
+
+      // Adjust the cutoffs with the dithering pattern
+      const adjustedDarkCutoff = Math.max(0, Math.min(255, darkCutoff - thresholdModifier));
+      const adjustedMidCutoff = Math.max(0, Math.min(255, midCutoff - thresholdModifier));
+      const adjustedBrightCutoff = Math.max(0, Math.min(255, brightCutoff - thresholdModifier));
 
       // Process each color channel separately
       for (let c = 0; c < 3; c++) {
         const oldPixel = srcPixels[i + c];
 
-        // Apply the threshold modifier differently for 2-bit color
-        if (oldPixel < Math.max(0, Math.min(85, 43 - thresholdModifier))) {
+        // Apply the adjusted thresholds for better 2-bit dithering
+        if (oldPixel < adjustedDarkCutoff) {
           destPixels[i + c] = 0;
-        } else if (oldPixel < Math.max(0, Math.min(170, 128 - thresholdModifier))) {
+        } else if (oldPixel < adjustedMidCutoff) {
           destPixels[i + c] = 85;
-        } else if (oldPixel < Math.max(0, Math.min(255, 213 - thresholdModifier))) {
+        } else if (oldPixel < adjustedBrightCutoff) {
           destPixels[i + c] = 170;
         } else {
           destPixels[i + c] = 255;
