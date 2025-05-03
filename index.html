@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinclair QL PNG to 1-bit RGB Converter</title>
+    <link href="style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="container">
+      <form novalidate class="inputs" id="inputForm">
+        <div class="original">
+          <div id="dropArea" class="drop-area">
+            <div id="placeholderText" class="drop-area-text">
+              <p>Drag and drop an image here, or click to select a file</p>
+              <p>Supports: JPG, PNG, GIF, etc.</p>
+            </div>
+            <canvas id="originalCanvas"></canvas>
+            <input type="file" id="imageInput" accept="image/*">
+          </div>
+        </div>
+
+        <div class="resize-options">
+          <div class="resize-selector input-row">
+            <label for="resizeMode">Resize:</label>
+            <select id="resizeMode">
+              <option value="auto">Auto</option>
+              <option value="manual">Manual</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div class="input-row" id="resizeDimensions">
+            <label for="resizeWidth">Width: </label>
+            <input type="number" id="resizeWidth" value="256" min="1" max="1024" disabled>
+            <label for="resizeHeight">Height: </label>
+            <input type="number" id="resizeHeight" value="256" min="1" max="1024" disabled>
+            <span>pixels</span>
+          </div>
+        </div>
+
+        <div class="dithering-options">
+          <div class="slider-container">
+            <label for="threshold">Threshold: <span id="thresholdValue" class="slider-value">128</span></label>
+            <input type="range" min="1" max="254" step="0.01" value="128" id="threshold" />
+          </div>
+
+          <div class="algorithm-selector input-row">
+            <label for="algorithm">Dithering:</label>
+            <select id="algorithm">
+              <option value="floydSteinberg">Floyd-Steinberg Dithering</option>
+              <option value="atkinson">Atkinson Dithering</option>
+              <option value="ordered2x2">Ordered Dithering 2x2</option>
+              <option value="ordered4x4">Ordered Dithering 4x4</option>
+              <option value="ordered8x8">Ordered Dithering 8x8</option>
+              <option value="threshold">None</option>
+            </select>
+          </div>
+
+          <div class="slider-container" id="ditherSlider">
+            <label for="ditherAmount">Amount: <span id="ditherAmountValue" class="slider-value">0.25</span></label>
+            <input type="range" min="0" max="2" step="0.01" value="0.25" id="ditherAmount" />
+          </div>
+        </div>
+      </form>
+
+      <div class="preview-box" id="output" style="display: none;">
+        <canvas id="convertedCanvas" class="converted-canvas"></canvas>
+        <div id="downloadSection" style="display: none;">
+          <button id="downloadPng">Download as PNG</button>
+          <button id="downloadBinary">Download as Binary Data</button>
+        </div>
+      </div>
+
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>
