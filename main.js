@@ -1,16 +1,17 @@
 // TODO:
 // - show original dimensions / scale %
+// - Downloads for flicker mode
 
 // DOM elements
-let originalCanvas = document.getElementById('originalCanvas');
-let originalCtx = originalCanvas.getContext('2d');
-let convertedCanvas = document.getElementById('convertedCanvas');
-let convertedCtx = convertedCanvas.getContext('2d');
-let dropArea = document.getElementById('dropArea');
-let fileInput = document.getElementById('imageInput');
-let resizeWidthInput = document.getElementById('resizeWidth')
-let resizeHeightInput = document.getElementById('resizeHeight')
-let resizeModeInput = document.getElementById('resizeMode')
+let originalCanvas = document.getElementById("originalCanvas");
+let originalCtx = originalCanvas.getContext("2d");
+let convertedCanvas = document.getElementById("convertedCanvas");
+let convertedCtx = convertedCanvas.getContext("2d");
+let dropArea = document.getElementById("dropArea");
+let fileInput = document.getElementById("imageInput");
+let resizeWidthInput = document.getElementById("resizeWidth");
+let resizeHeightInput = document.getElementById("resizeHeight");
+let resizeModeInput = document.getElementById("resizeMode");
 
 // Selected input image
 let originalImage = null;
@@ -18,21 +19,21 @@ let originalImage = null;
 // Bayer matrices for ordered dithering
 const bayerMatrices = {
   // 2x2 Bayer matrix
-  '2x2': [
+  "2x2": [
     [0 / 4, 2 / 4],
-    [3 / 4, 1 / 4]
+    [3 / 4, 1 / 4],
   ],
 
   // 4x4 Bayer matrix
-  '4x4': [
+  "4x4": [
     [0 / 16, 8 / 16, 2 / 16, 10 / 16],
     [12 / 16, 4 / 16, 14 / 16, 6 / 16],
     [3 / 16, 11 / 16, 1 / 16, 9 / 16],
-    [15 / 16, 7 / 16, 13 / 16, 5 / 16]
+    [15 / 16, 7 / 16, 13 / 16, 5 / 16],
   ],
 
   // 8x8 Bayer matrix
-  '8x8': [
+  "8x8": [
     [0 / 64, 32 / 64, 8 / 64, 40 / 64, 2 / 64, 34 / 64, 10 / 64, 42 / 64],
     [48 / 64, 16 / 64, 56 / 64, 24 / 64, 50 / 64, 18 / 64, 58 / 64, 26 / 64],
     [12 / 64, 44 / 64, 4 / 64, 36 / 64, 14 / 64, 46 / 64, 6 / 64, 38 / 64],
@@ -40,79 +41,104 @@ const bayerMatrices = {
     [3 / 64, 35 / 64, 11 / 64, 43 / 64, 1 / 64, 33 / 64, 9 / 64, 41 / 64],
     [51 / 64, 19 / 64, 59 / 64, 27 / 64, 49 / 64, 17 / 64, 57 / 64, 25 / 64],
     [15 / 64, 47 / 64, 7 / 64, 39 / 64, 13 / 64, 45 / 64, 5 / 64, 37 / 64],
-    [63 / 64, 31 / 64, 55 / 64, 23 / 64, 61 / 64, 29 / 64, 53 / 64, 21 / 64]
-  ]
+    [63 / 64, 31 / 64, 55 / 64, 23 / 64, 61 / 64, 29 / 64, 53 / 64, 21 / 64],
+  ],
 };
 
 // Initialize UI elements
-document.getElementById('threshold').addEventListener('input', function () {
-  document.getElementById('thresholdValue').textContent = this.value;
+document.getElementById("threshold").addEventListener("input", function () {
+  document.getElementById("thresholdValue").textContent = this.value;
 });
 
-document.getElementById('ditherAmount').addEventListener('input', function () {
-  document.getElementById('ditherAmountValue').textContent = this.value;
+document.getElementById("ditherAmount").addEventListener("input", function () {
+  document.getElementById("ditherAmountValue").textContent = this.value;
 });
 
-document.getElementById('downloadPng').addEventListener('click', downloadPNG);
-document.getElementById('downloadBinary').addEventListener('click', downloadBinary);
+document.getElementById("downloadPng").addEventListener("click", downloadPNG);
+document
+  .getElementById("downloadSource")
+  .addEventListener("click", downloadSource);
+document
+  .getElementById("downloadBinary")
+  .addEventListener("click", downloadBinary);
 
 // Add auto-refresh triggers for all settings
-document.getElementById('algorithm').addEventListener('change', update);
-document.getElementById('threshold').addEventListener('input', update);
-document.getElementById('ditherAmount').addEventListener('input', update);
-document.getElementById('use2BitMode').addEventListener('change', update);  // Add event listener for 2-bit mode checkbox
-resizeModeInput.addEventListener('change', update);
-resizeWidthInput.addEventListener('input', update);
-resizeHeightInput.addEventListener('input', update);
+document.getElementById("algorithm").addEventListener("change", update);
+document.getElementById("threshold").addEventListener("input", update);
+document.getElementById("ditherAmount").addEventListener("input", update);
+document.getElementById("use2BitMode").addEventListener("change", update); // Add event listener for 2-bit mode checkbox
+resizeModeInput.addEventListener("change", update);
+resizeWidthInput.addEventListener("input", update);
+resizeHeightInput.addEventListener("input", update);
 
 // Click on drop area to open file browser
-dropArea.addEventListener('click', function () {
+dropArea.addEventListener("click", function () {
   fileInput.click();
 });
 
 // Handle file selection via input
-fileInput.addEventListener('change', function (e) {
+fileInput.addEventListener("change", function (e) {
   loadImage(e.target.files[0]);
 });
 
 // Drag and drop events
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-  dropArea.addEventListener(eventName, function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }, false);
+["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+  dropArea.addEventListener(
+    eventName,
+    function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    false,
+  );
 });
 
 // Handle drag enter
-dropArea.addEventListener('dragenter', function () {
-  dropArea.classList.add('drag-active');
-}, false);
+dropArea.addEventListener(
+  "dragenter",
+  function () {
+    dropArea.classList.add("drag-active");
+  },
+  false,
+);
 
 // Handle drag over
-dropArea.addEventListener('dragover', function () {
-  dropArea.classList.add('drag-active');
-}, false);
+dropArea.addEventListener(
+  "dragover",
+  function () {
+    dropArea.classList.add("drag-active");
+  },
+  false,
+);
 
 // Handle drag leave
-dropArea.addEventListener('dragleave', function () {
-  dropArea.classList.remove('drag-active');
-}, false);
+dropArea.addEventListener(
+  "dragleave",
+  function () {
+    dropArea.classList.remove("drag-active");
+  },
+  false,
+);
 
 // Handle drop
-dropArea.addEventListener('drop', function (e) {
-  dropArea.classList.remove('drag-active');
-  const dt = e.dataTransfer;
-  const file = dt.files[0];
-  loadImage(file);
-}, false);
+dropArea.addEventListener(
+  "drop",
+  function (e) {
+    dropArea.classList.remove("drag-active");
+    const dt = e.dataTransfer;
+    const file = dt.files[0];
+    loadImage(file);
+  },
+  false,
+);
 
-document.getElementById('inputForm').reset()
+document.getElementById("inputForm").reset();
 
 // Load the selected image
 function loadImage(file) {
   if (!file) return;
 
-  document.getElementById('placeholderText').style.display = 'none';
+  document.getElementById("placeholderText").style.display = "none";
 
   const reader = new FileReader();
   reader.onload = function (event) {
@@ -137,19 +163,29 @@ function loadImage(file) {
 // Convert the image using selected algorithm
 function update() {
   // Get conversion parameters
-  const algorithm = document.getElementById('algorithm').value;
+  const algorithm = document.getElementById("algorithm").value;
   const resizeMode = resizeModeInput.value;
-  const threshold = parseInt(document.getElementById('threshold').value);
-  const ditherAmount = parseFloat(document.getElementById('ditherAmount').value);
-  const use2BitMode = document.getElementById('use2BitMode').checked;  // Get the state of 2-bit mode checkbox
+  const threshold = parseInt(document.getElementById("threshold").value);
+  const ditherAmount = parseFloat(
+    document.getElementById("ditherAmount").value,
+  );
+  const use2BitMode = document.getElementById("use2BitMode").checked; // Get the state of 2-bit mode checkbox
 
-  const isManual = resizeMode === 'manual';
+  const isManual = resizeMode === "manual";
   resizeWidthInput.disabled = !isManual;
   resizeHeightInput.disabled = !isManual;
 
   // Show dither slider for algorithms that use it
-  const hasDither = ['floydSteinberg', 'atkinson', 'ordered2x2', 'ordered4x4', 'ordered8x8'].includes(algorithm);
-  document.getElementById('ditherSlider').style.display = hasDither ? 'block' : 'none';
+  const hasDither = [
+    "floydSteinberg",
+    "atkinson",
+    "ordered2x2",
+    "ordered4x4",
+    "ordered8x8",
+  ].includes(algorithm);
+  document.getElementById("ditherSlider").style.display = hasDither
+    ? "block"
+    : "none";
 
   if (!originalImage) {
     // No image loaded yet, nothing to convert
@@ -161,8 +197,8 @@ function update() {
   let targetHeight = originalImage.height;
 
   switch (resizeMode) {
-    case 'auto': {
-      let scale = 1
+    case "auto": {
+      let scale = 1;
       targetWidth *= 3 / 4.4;
       if (targetWidth > targetHeight && targetWidth > 256) {
         scale = 256 / targetWidth;
@@ -173,7 +209,7 @@ function update() {
       targetHeight = Math.floor(targetHeight * scale);
       break;
     }
-    case 'manual':
+    case "manual":
       // Manual size - use exact dimensions specified
       targetWidth = parseInt(resizeWidthInput.value);
       targetHeight = parseInt(resizeHeightInput.value);
@@ -192,8 +228,17 @@ function update() {
   convertedCtx.clearRect(0, 0, convertedCanvas.width, convertedCanvas.height);
 
   // Draw the resized image
-  convertedCtx.drawImage(originalImage, 0, 0, originalImage.width, originalImage.height,
-    0, 0, targetWidth, targetHeight);
+  convertedCtx.drawImage(
+    originalImage,
+    0,
+    0,
+    originalImage.width,
+    originalImage.height,
+    0,
+    0,
+    targetWidth,
+    targetHeight,
+  );
 
   // Get the image data for processing
   const imageData = convertedCtx.getImageData(0, 0, targetWidth, targetHeight);
@@ -205,46 +250,122 @@ function update() {
 
   // Apply the selected conversion algorithm
   switch (algorithm) {
-    case 'threshold':
+    case "threshold":
       if (use2BitMode) {
         apply2BitThreshold(pixels, convertedPixels, threshold);
       } else {
         applyThreshold(pixels, convertedPixels, threshold);
       }
       break;
-    case 'floydSteinberg':
+    case "floydSteinberg":
       if (use2BitMode) {
-        apply2BitFloydSteinberg(pixels, convertedPixels, threshold, targetWidth, targetHeight, ditherAmount);
+        apply2BitFloydSteinberg(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          ditherAmount,
+        );
       } else {
-        applyFloydSteinberg(pixels, convertedPixels, threshold, targetWidth, targetHeight, ditherAmount);
+        applyFloydSteinberg(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          ditherAmount,
+        );
       }
       break;
-    case 'atkinson':
+    case "atkinson":
       if (use2BitMode) {
-        apply2BitAtkinson(pixels, convertedPixels, threshold, targetWidth, targetHeight, ditherAmount);
+        apply2BitAtkinson(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          ditherAmount,
+        );
       } else {
-        applyAtkinson(pixels, convertedPixels, threshold, targetWidth, targetHeight, ditherAmount);
+        applyAtkinson(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          ditherAmount,
+        );
       }
       break;
-    case 'ordered2x2':
+    case "ordered2x2":
       if (use2BitMode) {
-        apply2BitOrderedDithering(pixels, convertedPixels, threshold, targetWidth, targetHeight, '2x2', ditherAmount);
+        apply2BitOrderedDithering(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          "2x2",
+          ditherAmount,
+        );
       } else {
-        applyOrderedDithering(pixels, convertedPixels, threshold, targetWidth, targetHeight, '2x2', ditherAmount);
+        applyOrderedDithering(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          "2x2",
+          ditherAmount,
+        );
       }
       break;
-    case 'ordered4x4':
+    case "ordered4x4":
       if (use2BitMode) {
-        apply2BitOrderedDithering(pixels, convertedPixels, threshold, targetWidth, targetHeight, '4x4', ditherAmount);
+        apply2BitOrderedDithering(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          "4x4",
+          ditherAmount,
+        );
       } else {
-        applyOrderedDithering(pixels, convertedPixels, threshold, targetWidth, targetHeight, '4x4', ditherAmount);
+        applyOrderedDithering(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          "4x4",
+          ditherAmount,
+        );
       }
       break;
-    case 'ordered8x8':
+    case "ordered8x8":
       if (use2BitMode) {
-        apply2BitOrderedDithering(pixels, convertedPixels, threshold, targetWidth, targetHeight, '8x8', ditherAmount);
+        apply2BitOrderedDithering(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          "8x8",
+          ditherAmount,
+        );
       } else {
-        applyOrderedDithering(pixels, convertedPixels, threshold, targetWidth, targetHeight, '8x8', ditherAmount);
+        applyOrderedDithering(
+          pixels,
+          convertedPixels,
+          threshold,
+          targetWidth,
+          targetHeight,
+          "8x8",
+          ditherAmount,
+        );
       }
       break;
   }
@@ -253,7 +374,7 @@ function update() {
   convertedCtx.putImageData(convertedImageData, 0, 0);
 
   // Show download section
-  document.getElementById('output').style.display = 'block';
+  document.getElementById("output").style.display = "block";
 }
 
 // Simple threshold algorithm (1-bit)
@@ -281,8 +402,8 @@ function applyThreshold(srcPixels, destPixels, threshold) {
 function apply2BitThreshold(srcPixels, destPixels, threshold) {
   // Calculate level boundaries based on threshold
   // Threshold controls the midpoint between darker and lighter colors
-  const darkCutoff = Math.max(0, Math.min(127, threshold / 2));  // Boundary between level 0 and 1
-  const midCutoff = threshold;                                  // Boundary between level 1 and 2
+  const darkCutoff = Math.max(0, Math.min(127, threshold / 2)); // Boundary between level 0 and 1
+  const midCutoff = threshold; // Boundary between level 1 and 2
   const brightCutoff = Math.min(255, threshold + (255 - threshold) / 2); // Boundary between level 2 and 3
 
   for (let i = 0; i < srcPixels.length; i += 4) {
@@ -342,12 +463,19 @@ function convert2Bit(value, threshold) {
     return value < adjustedThreshold / 2 ? 0 : 85;
   } else {
     // For brighter pixels, split based on if they're very bright or moderately bright
-    return value < 128 + (adjustedThreshold / 2) ? 170 : 255;
+    return value < 128 + adjustedThreshold / 2 ? 170 : 255;
   }
 }
 
 // Floyd-Steinberg dithering algorithm (1-bit)
-function applyFloydSteinberg(srcPixels, destPixels, threshold, width, height, ditherAmount) {
+function applyFloydSteinberg(
+  srcPixels,
+  destPixels,
+  threshold,
+  width,
+  height,
+  ditherAmount,
+) {
   // Create a copy of the source pixels to work with
   const tempPixels = new Uint8ClampedArray(srcPixels);
 
@@ -365,15 +493,15 @@ function applyFloydSteinberg(srcPixels, destPixels, threshold, width, height, di
 
         // Distribute the error to neighboring pixels
         if (x + 1 < width) {
-          tempPixels[i + 4 + c] += error * 7 / 16;
+          tempPixels[i + 4 + c] += (error * 7) / 16;
         }
         if (y + 1 < height) {
           if (x > 0) {
-            tempPixels[i + 4 * (width - 1) + c] += error * 3 / 16;
+            tempPixels[i + 4 * (width - 1) + c] += (error * 3) / 16;
           }
-          tempPixels[i + 4 * width + c] += error * 5 / 16;
+          tempPixels[i + 4 * width + c] += (error * 5) / 16;
           if (x + 1 < width) {
-            tempPixels[i + 4 * (width + 1) + c] += error * 1 / 16;
+            tempPixels[i + 4 * (width + 1) + c] += (error * 1) / 16;
           }
         }
       }
@@ -385,7 +513,14 @@ function applyFloydSteinberg(srcPixels, destPixels, threshold, width, height, di
 }
 
 // Floyd-Steinberg dithering algorithm with 2-bit support
-function apply2BitFloydSteinberg(srcPixels, destPixels, threshold, width, height, ditherAmount) {
+function apply2BitFloydSteinberg(
+  srcPixels,
+  destPixels,
+  threshold,
+  width,
+  height,
+  ditherAmount,
+) {
   // Create a copy of the source pixels to work with
   const tempPixels = new Uint8ClampedArray(srcPixels);
 
@@ -423,15 +558,15 @@ function apply2BitFloydSteinberg(srcPixels, destPixels, threshold, width, height
 
         // Distribute the error to neighboring pixels
         if (x + 1 < width) {
-          tempPixels[i + 4 + c] += error * 7 / 16;
+          tempPixels[i + 4 + c] += (error * 7) / 16;
         }
         if (y + 1 < height) {
           if (x > 0) {
-            tempPixels[i + 4 * (width - 1) + c] += error * 3 / 16;
+            tempPixels[i + 4 * (width - 1) + c] += (error * 3) / 16;
           }
-          tempPixels[i + 4 * width + c] += error * 5 / 16;
+          tempPixels[i + 4 * width + c] += (error * 5) / 16;
           if (x + 1 < width) {
-            tempPixels[i + 4 * (width + 1) + c] += error * 1 / 16;
+            tempPixels[i + 4 * (width + 1) + c] += (error * 1) / 16;
           }
         }
       }
@@ -443,7 +578,14 @@ function apply2BitFloydSteinberg(srcPixels, destPixels, threshold, width, height
 }
 
 // Atkinson dithering algorithm (1-bit)
-function applyAtkinson(srcPixels, destPixels, threshold, width, height, ditherAmount) {
+function applyAtkinson(
+  srcPixels,
+  destPixels,
+  threshold,
+  width,
+  height,
+  ditherAmount,
+) {
   // Create a copy of the source pixels to work with
   const tempPixels = new Uint8ClampedArray(srcPixels);
 
@@ -487,7 +629,14 @@ function applyAtkinson(srcPixels, destPixels, threshold, width, height, ditherAm
 }
 
 // Atkinson dithering algorithm with 2-bit support
-function apply2BitAtkinson(srcPixels, destPixels, threshold, width, height, ditherAmount) {
+function apply2BitAtkinson(
+  srcPixels,
+  destPixels,
+  threshold,
+  width,
+  height,
+  ditherAmount,
+) {
   // Create a copy of the source pixels to work with
   const tempPixels = new Uint8ClampedArray(srcPixels);
 
@@ -551,7 +700,15 @@ function apply2BitAtkinson(srcPixels, destPixels, threshold, width, height, dith
 }
 
 // Ordered dithering algorithm with Bayer matrices (1-bit)
-function applyOrderedDithering(srcPixels, destPixels, threshold, width, height, matrixSize, ditherAmount) {
+function applyOrderedDithering(
+  srcPixels,
+  destPixels,
+  threshold,
+  width,
+  height,
+  matrixSize,
+  ditherAmount,
+) {
   const matrix = bayerMatrices[matrixSize];
   const matrixWidth = matrix[0].length;
   const matrixHeight = matrix.length;
@@ -567,10 +724,15 @@ function applyOrderedDithering(srcPixels, destPixels, threshold, width, height, 
       // Get threshold adjustment from Bayer matrix
       // Scale it to match the threshold range (0-255)
       // Use ditherAmount to control the strength of the dithering pattern
-      const thresholdModifier = Math.floor(matrix[matrixY][matrixX] * 255 * ditherAmount);
+      const thresholdModifier = Math.floor(
+        matrix[matrixY][matrixX] * 255 * ditherAmount,
+      );
 
       // Calculate adjusted threshold value using the base threshold and the modifier
-      const adjustedThreshold = Math.max(0, Math.min(255, threshold - thresholdModifier));
+      const adjustedThreshold = Math.max(
+        0,
+        Math.min(255, threshold - thresholdModifier),
+      );
 
       // Process each color channel separately
       for (let c = 0; c < 3; c++) {
@@ -586,7 +748,15 @@ function applyOrderedDithering(srcPixels, destPixels, threshold, width, height, 
 }
 
 // Ordered dithering algorithm with Bayer matrices and 2-bit support
-function apply2BitOrderedDithering(srcPixels, destPixels, threshold, width, height, matrixSize, ditherAmount) {
+function apply2BitOrderedDithering(
+  srcPixels,
+  destPixels,
+  threshold,
+  width,
+  height,
+  matrixSize,
+  ditherAmount,
+) {
   const matrix = bayerMatrices[matrixSize];
   const matrixWidth = matrix[0].length;
   const matrixHeight = matrix.length;
@@ -606,12 +776,23 @@ function apply2BitOrderedDithering(srcPixels, destPixels, threshold, width, heig
 
       // Get threshold adjustment from Bayer matrix
       // Scale it to create a noticeable effect in 2-bit mode
-      const thresholdModifier = Math.floor(matrix[matrixY][matrixX] * 85 * ditherAmount);
+      const thresholdModifier = Math.floor(
+        matrix[matrixY][matrixX] * 85 * ditherAmount,
+      );
 
       // Adjust the cutoffs with the dithering pattern
-      const adjustedDarkCutoff = Math.max(0, Math.min(255, darkCutoff - thresholdModifier));
-      const adjustedMidCutoff = Math.max(0, Math.min(255, midCutoff - thresholdModifier));
-      const adjustedBrightCutoff = Math.max(0, Math.min(255, brightCutoff - thresholdModifier));
+      const adjustedDarkCutoff = Math.max(
+        0,
+        Math.min(255, darkCutoff - thresholdModifier),
+      );
+      const adjustedMidCutoff = Math.max(
+        0,
+        Math.min(255, midCutoff - thresholdModifier),
+      );
+      const adjustedBrightCutoff = Math.max(
+        0,
+        Math.min(255, brightCutoff - thresholdModifier),
+      );
 
       // Process each color channel separately
       for (let c = 0; c < 3; c++) {
@@ -639,9 +820,9 @@ function apply2BitOrderedDithering(srcPixels, destPixels, threshold, width, heig
 function downloadPNG() {
   if (!originalImage) return;
 
-  const link = document.createElement('a');
-  link.download = 'sinclair_ql_converted.png';
-  link.href = convertedCanvas.toDataURL('image/png');
+  const link = document.createElement("a");
+  link.download = "sinclair_ql_converted.png";
+  link.href = convertedCanvas.toDataURL("image/png");
   link.click();
 }
 
@@ -649,91 +830,167 @@ function downloadPNG() {
 function downloadBinary() {
   if (!originalImage) return;
 
-  // Get the image data
-  const imageData = convertedCtx.getImageData(0, 0, convertedCanvas.width, convertedCanvas.height);
+  const binaryData = convertToBin(convertedCanvas);
+  const blob = new Blob([binaryData], { type: "application/octet-stream" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "image.bin";
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function downloadSource() {
+  if (!originalImage) return;
+
+  const data = convertToSource(convertedCanvas);
+  const blob = new Blob([data], { type: "text/plain" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "image.i";
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function convertToBin(canvas, twoPlan = true) {
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = canvas.getContext("2d").getImageData(0, 0, width, height);
   const pixels = imageData.data;
-  const use2BitMode = document.getElementById('use2BitMode').checked;
 
-  // Create binary data specifically for Sinclair QL format
-  // This is a simplified version - actual QL format would need more specific conversion
-  const width = convertedCanvas.width;
-  const height = convertedCanvas.height;
-  const bytesPerRow = Math.ceil(width / 8);
-  const binaryData = new Uint8Array(bytesPerRow * height * 3); // 3 color planes
+  const bytesPerRow = twoPlan ? (width / 4) * 2 : width / 4;
+  const totalBytes = height * bytesPerRow;
+  const binaryData = new Uint8Array(totalBytes);
+  let o = 0;
 
-  if (!use2BitMode) {
-    // 1-bit mode - convert to binary format
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const pixelIndex = (y * width + x) * 4;
-        const byteIndex = Math.floor(x / 8);
-        const bitIndex = 7 - (x % 8); // MSB first
-        const bitValue = 1 << bitIndex;
-
-        // Red plane
-        if (pixels[pixelIndex] >= 128) {
-          binaryData[y * bytesPerRow + byteIndex] |= bitValue;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x += 4) {
+      let bit1 = 1 << 7;
+      let bit2 = 1 << 6;
+      let byte1 = 0;
+      let byte2 = 0;
+      for (let i = 0; i < 4; i++) {
+        const offset = (y * width + x + i) * 4;
+        const r = pixels[offset + 0];
+        const g = pixels[offset + 1];
+        const b = pixels[offset + 2];
+        // GFGFGFGF RBRBRBRB
+        if (g > 127) {
+          byte1 += bit1;
         }
-
-        // Green plane
-        if (pixels[pixelIndex + 1] >= 128) {
-          binaryData[bytesPerRow * height + y * bytesPerRow + byteIndex] |= bitValue;
+        if (r > 127) {
+          byte2 += bit1;
         }
-
-        // Blue plane
-        if (pixels[pixelIndex + 2] >= 128) {
-          binaryData[2 * bytesPerRow * height + y * bytesPerRow + byteIndex] |= bitValue;
+        if (b > 127) {
+          byte2 += bit2;
         }
+        bit1 >>= 2;
+        bit2 >>= 2;
       }
-    }
-  } else {
-    // 2-bit mode - requires more complex encoding
-    // For 2-bit per channel, we need to use 2 bits per pixel per color plane
-    // This is a simplified approach - actual implementation would depend on 
-    // the specific requirements of the Sinclair QL format
-
-    // Clear the binary data first
-    binaryData.fill(0);
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const pixelIndex = (y * width + x) * 4;
-
-        // For each color, determine the 2-bit value (0-3)
-        const redValue = pixels[pixelIndex] === 0 ? 0 :
-          pixels[pixelIndex] === 85 ? 1 :
-            pixels[pixelIndex] === 170 ? 2 : 3;
-
-        const greenValue = pixels[pixelIndex + 1] === 0 ? 0 :
-          pixels[pixelIndex + 1] === 85 ? 1 :
-            pixels[pixelIndex + 1] === 170 ? 2 : 3;
-
-        const blueValue = pixels[pixelIndex + 2] === 0 ? 0 :
-          pixels[pixelIndex + 2] === 85 ? 1 :
-            pixels[pixelIndex + 2] === 170 ? 2 : 3;
-
-        // Calculate position in the binary array
-        // Each byte holds 4 pixels (2 bits per pixel)
-        const byteIndex = Math.floor(x / 4);
-        const bitPosition = 6 - (x % 4) * 2; // Position of the 2 bits within the byte (MSB first)
-
-        // Set the bits for each color plane
-        // Red plane
-        binaryData[y * bytesPerRow + byteIndex] |= (redValue << bitPosition);
-
-        // Green plane
-        binaryData[bytesPerRow * height + y * bytesPerRow + byteIndex] |= (greenValue << bitPosition);
-
-        // Blue plane
-        binaryData[2 * bytesPerRow * height + y * bytesPerRow + byteIndex] |= (blueValue << bitPosition);
+      if (twoPlan) {
+        binaryData[o++] = byte1;
       }
+      binaryData[o++] = byte2;
     }
   }
+  return binaryData;
+}
 
-  // Create a blob and download
-  const blob = new Blob([binaryData], { type: 'application/octet-stream' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'sinclair_ql_data.bin';
-  link.click();
+function convertToSource(canvas, twoPlan = true) {
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = canvas.getContext("2d").getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+
+  let output = "; Height: " + height + "\n";
+  output += "; Width: " + width + "\n";
+
+  // Check if width is divisible by 4
+  if (width % 4 !== 0) {
+    output += "; Width is not %4; exiting...\n";
+    return output;
+  }
+
+  // Color mapping (same as in PHP)
+  const bitList = [
+    ["00", "00"], // 0: black
+    ["00", "01"], // 1: blue
+    ["00", "10"], // 2: red
+    ["00", "11"], // 3: magenta
+    ["10", "00"], // 4: green
+    ["10", "01"], // 5: cyan
+    ["10", "10"], // 6: yellow
+    ["10", "11"], // 7: white
+  ];
+
+  // Process pixels
+  const res = [];
+
+  for (let y = 0; y < height; y++) {
+    const line = [];
+
+    for (let x = 0; x < width; x += 4) {
+      let byte1 = "";
+      let byte2 = "";
+
+      // Get color values for 4 consecutive pixels
+      // In canvas, each pixel has 4 values (R,G,B,A), we need to convert to our color index
+      const colors = [];
+
+      for (let i = 0; i < 4; i++) {
+        const pixelIndex = (y * width + (x + i)) * 4;
+        const r = pixels[pixelIndex];
+        const g = pixels[pixelIndex + 1];
+        const b = pixels[pixelIndex + 2];
+
+        // Convert RGB to our color index (0-7)
+        // This is a simple conversion - you might need a more sophisticated one
+        let colorIndex = 0;
+
+        // This is a simplified color mapping based on the PHP code's assumption
+        // Black (0)
+        if (r < 85 && g < 85 && b < 85) colorIndex = 0;
+        // Blue (1)
+        else if (r < 85 && g < 85 && b >= 85) colorIndex = 1;
+        // Red (2)
+        else if (r >= 85 && g < 85 && b < 85) colorIndex = 2;
+        // Magenta (3)
+        else if (r >= 85 && g < 85 && b >= 85) colorIndex = 3;
+        // Green (4)
+        else if (r < 85 && g >= 85 && b < 85) colorIndex = 4;
+        // Cyan (5)
+        else if (r < 85 && g >= 85 && b >= 85) colorIndex = 5;
+        // Yellow (6)
+        else if (r >= 85 && g >= 85 && b < 85) colorIndex = 6;
+        // White (7)
+        else if (r >= 85 && g >= 85 && b >= 85) colorIndex = 7;
+
+        colors.push(Math.min(colorIndex, 7));
+      }
+
+      // Get bit values for the 4 pixels
+      const val0 = bitList[colors[0]];
+      const val1 = bitList[colors[1]];
+      const val2 = bitList[colors[2]];
+      const val3 = bitList[colors[3]];
+
+      // Create the two bytes
+      byte1 = "%" + val0[0] + val1[0] + val2[0] + val3[0];
+      byte2 = "%" + val0[1] + val1[1] + val2[1] + val3[1];
+
+      // Add to line based on twoPlan flag
+      if (twoPlan) {
+        line.push(byte1);
+      }
+      line.push(byte2);
+    }
+
+    res.push(line);
+  }
+
+  // Generate output
+  for (let i = 0; i < res.length; i++) {
+    output += "\tdc.b\t" + res[i].join(",") + "\n";
+  }
+
+  return output;
 }
